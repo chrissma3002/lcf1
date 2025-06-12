@@ -11,7 +11,7 @@ const AuthScreen: React.FC = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showEmailConfirmation, setShowEmailConfirmation] = useState(false);
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, resendConfirmation } = useAuth();
   const { quotes, loading: quotesLoading } = useQuotes();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -68,9 +68,13 @@ const AuthScreen: React.FC = () => {
 
     setLoading(true);
     try {
-      const { error } = await signUp(email, password);
-      if (error && !error.message.includes('User already registered')) {
-        toast.error(error.message);
+      const { error } = await resendConfirmation(email);
+      if (error) {
+        if (error.message.includes('over_email_send_rate_limit')) {
+          toast.error('Please wait a moment before requesting another confirmation email.');
+        } else {
+          toast.error(error.message);
+        }
       } else {
         toast.success('Confirmation email sent! Please check your inbox.');
       }

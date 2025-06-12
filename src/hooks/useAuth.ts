@@ -28,12 +28,17 @@ export const useAuth = () => {
   };
 
   const signUp = async (email: string, password: string) => {
-    const { error } = await authService.signUp(email, password);
-    return { error };
+    const result = await authService.signUp(email, password);
+    return result;
   };
 
   const signOut = async () => {
     const { error } = await authService.signOut();
+    return { error };
+  };
+
+  const resendConfirmation = async (email: string) => {
+    const { error } = await authService.resendConfirmation(email);
     return { error };
   };
 
@@ -43,5 +48,6 @@ export const useAuth = () => {
     signIn,
     signUp,
     signOut,
+    resendConfirmation,
   };
 };
