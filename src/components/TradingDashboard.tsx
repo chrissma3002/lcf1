@@ -11,7 +11,8 @@ import {
   Target,
   BarChart3,
   PieChart,
-  Trash2
+  Trash2,
+  Sparkles
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { tradingService } from '../services/tradingService';
@@ -22,7 +23,9 @@ import SessionCard from './Dashboard/SessionCard';
 import StatsCard from './Dashboard/StatsCard';
 import TradeForm from './Dashboard/TradeForm';
 import TradesList from './Dashboard/TradesList';
-import PerformanceChart from './Dashboard/PerformanceChart';
+import EnhancedPerformanceChart from './Dashboard/EnhancedPerformanceChart';
+import ChatInterface from './AI/ChatInterface';
+import SessionSummaryModal from './Dashboard/SessionSummaryModal';
 import toast from 'react-hot-toast';
 
 const TradingDashboard: React.FC = () => {
@@ -45,6 +48,7 @@ const TradingDashboard: React.FC = () => {
   const [showNewSessionForm, setShowNewSessionForm] = useState(false);
   const [newSessionName, setNewSessionName] = useState('');
   const [newSessionCapital, setNewSessionCapital] = useState('');
+  const [showSummaryModal, setShowSummaryModal] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -363,6 +367,20 @@ const TradingDashboard: React.FC = () => {
               </div>
             </div>
 
+            {/* AI Summary */}
+            {currentSession && (
+              <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+                <h3 className="text-lg font-semibold text-white mb-4">AI Insights</h3>
+                <button
+                  onClick={() => setShowSummaryModal(true)}
+                  className="w-full flex items-center justify-center px-4 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all"
+                >
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Generate Session Summary
+                </button>
+              </div>
+            )}
+
             {/* Export/Import */}
             {currentSession && (
               <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
@@ -437,8 +455,8 @@ const TradingDashboard: React.FC = () => {
                   />
                 </div>
 
-                {/* Charts */}
-                <PerformanceChart trades={trades} initialCapital={currentSession.initial_capital} />
+                {/* Enhanced Charts */}
+                <EnhancedPerformanceChart trades={trades} initialCapital={currentSession.initial_capital} />
 
                 {/* Trade Form and List */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -471,6 +489,19 @@ const TradingDashboard: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* AI Chat Interface */}
+      <ChatInterface currentSessionId={currentSession?.id} />
+
+      {/* Session Summary Modal */}
+      {currentSession && (
+        <SessionSummaryModal
+          isOpen={showSummaryModal}
+          onClose={() => setShowSummaryModal(false)}
+          sessionId={currentSession.id}
+          sessionName={currentSession.name}
+        />
+      )}
     </div>
   );
 };
