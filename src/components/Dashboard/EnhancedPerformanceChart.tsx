@@ -149,6 +149,37 @@ const EnhancedPerformanceChart: React.FC<EnhancedPerformanceChartProps> = ({
     return null;
   };
 
+  // Custom tooltip for Daily Performance chart to maintain dark background
+  const CustomDailyTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-slate-800 border border-slate-600 rounded-lg p-4 shadow-xl"
+          style={{ backgroundColor: '#1e293b' }} // Force dark background
+        >
+          <p className="text-slate-300 text-sm font-medium mb-2">{label}</p>
+          {payload.map((entry: any, index: number) => (
+            <div key={index} className="flex items-center justify-between space-x-4">
+              <div className="flex items-center">
+                <div 
+                  className="w-3 h-3 rounded-full mr-2"
+                  style={{ backgroundColor: entry.color }}
+                />
+                <span className="text-slate-400 text-sm">{entry.name}:</span>
+              </div>
+              <span className="text-white font-semibold">
+                {formatCurrency(entry.value)}
+              </span>
+            </div>
+          ))}
+        </motion.div>
+      );
+    }
+    return null;
+  };
+
   if (trades.length === 0) {
     return (
       <div className="bg-slate-800 rounded-xl p-8 border border-slate-700 text-center">
@@ -195,7 +226,7 @@ const EnhancedPerformanceChart: React.FC<EnhancedPerformanceChartProps> = ({
           key={activeChart}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
           className="h-80"
         >
           <ResponsiveContainer width="100%" height="100%">
@@ -227,6 +258,8 @@ const EnhancedPerformanceChart: React.FC<EnhancedPerformanceChartProps> = ({
                   fill="url(#capitalGradient)"
                   dot={{ fill: '#3B82F6', strokeWidth: 2, r: 4 }}
                   activeDot={{ r: 6, fill: '#3B82F6', stroke: '#1E40AF', strokeWidth: 2 }}
+                  animationDuration={1000}
+                  animationEasing="ease-out"
                 />
               </AreaChart>
             )}
@@ -242,7 +275,8 @@ const EnhancedPerformanceChart: React.FC<EnhancedPerformanceChartProps> = ({
                   paddingAngle={5}
                   dataKey="value"
                   animationBegin={0}
-                  animationDuration={800}
+                  animationDuration={1000}
+                  animationEasing="ease-out"
                 >
                   {pieData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
@@ -265,12 +299,22 @@ const EnhancedPerformanceChart: React.FC<EnhancedPerformanceChartProps> = ({
                   fontSize={12}
                   tickFormatter={(value) => `$${value.toLocaleString()}`}
                 />
-                <Tooltip content={<CustomTooltip />} />
+                <Tooltip 
+                  content={<CustomDailyTooltip />}
+                  contentStyle={{
+                    backgroundColor: '#1e293b',
+                    border: '1px solid #475569',
+                    borderRadius: '8px',
+                    color: '#f1f5f9'
+                  }}
+                  cursor={{ fill: 'rgba(59, 130, 246, 0.1)' }}
+                />
                 <Bar 
                   dataKey="profit_loss" 
                   fill="#3B82F6"
                   radius={[4, 4, 0, 0]}
-                  animationDuration={800}
+                  animationDuration={1000}
+                  animationEasing="ease-out"
                 />
               </BarChart>
             )}
@@ -303,6 +347,8 @@ const EnhancedPerformanceChart: React.FC<EnhancedPerformanceChartProps> = ({
                   fill="#3B82F6"
                   radius={[2, 2, 0, 0]}
                   opacity={0.7}
+                  animationDuration={1000}
+                  animationEasing="ease-out"
                 />
                 <Line
                   yAxisId="right"
@@ -311,6 +357,8 @@ const EnhancedPerformanceChart: React.FC<EnhancedPerformanceChartProps> = ({
                   stroke="#10B981"
                   strokeWidth={2}
                   dot={{ fill: '#10B981', strokeWidth: 2, r: 3 }}
+                  animationDuration={1200}
+                  animationEasing="ease-out"
                 />
               </ComposedChart>
             )}

@@ -12,7 +12,9 @@ import {
   BarChart3,
   PieChart,
   Trash2,
-  Sparkles
+  Sparkles,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { tradingService } from '../services/tradingService';
@@ -27,6 +29,62 @@ import EnhancedPerformanceChart from './Dashboard/EnhancedPerformanceChart';
 import ChatInterface from './AI/ChatInterface';
 import SessionSummaryModal from './Dashboard/SessionSummaryModal';
 import toast from 'react-hot-toast';
+
+// Sydney avatar component for greeting
+const SydneyAvatar: React.FC<{ className?: string }> = ({ className = "w-6 h-6" }) => (
+  <div className={`${className} bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-bold text-xs`}>
+    S
+  </div>
+);
+
+// Smart greeting component
+const SmartGreeting: React.FC<{ userName?: string }> = ({ userName }) => {
+  const [greeting, setGreeting] = useState('');
+
+  useEffect(() => {
+    const generateGreeting = () => {
+      const now = new Date();
+      const hour = now.getHours();
+      const month = now.getMonth();
+      const day = now.getDate();
+      
+      let timeGreeting = '';
+      if (hour < 12) timeGreeting = 'Good morning';
+      else if (hour < 17) timeGreeting = 'Good afternoon';
+      else timeGreeting = 'Good evening';
+
+      // Holiday detection
+      let holidayGreeting = '';
+      if (month === 11 && day === 25) holidayGreeting = '🎄 Merry Christmas! ';
+      else if (month === 0 && day === 1) holidayGreeting = '🎉 Happy New Year! ';
+      else if (month === 9 && day === 31) holidayGreeting = '🎃 Happy Halloween! ';
+      else if (month === 1 && day === 14) holidayGreeting = '💝 Happy Valentine\'s Day! ';
+
+      const name = userName ? userName.split('@')[0] : 'there';
+      setGreeting(`${holidayGreeting}${timeGreeting}, ${name}! Ready to analyze your trades?`);
+    };
+
+    generateGreeting();
+    const interval = setInterval(generateGreeting, 60000); // Update every minute
+    return () => clearInterval(interval);
+  }, [userName]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-gradient-to-r from-purple-600/20 to-pink-600/20 border border-purple-500/30 rounded-lg p-4 mb-6"
+    >
+      <div className="flex items-center">
+        <SydneyAvatar className="w-8 h-8 mr-3" />
+        <div>
+          <p className="text-white font-medium">Sydney</p>
+          <p className="text-slate-300 text-sm">{greeting}</p>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
 
 const TradingDashboard: React.FC = () => {
   const { user, signOut } = useAuth();
@@ -49,6 +107,7 @@ const TradingDashboard: React.FC = () => {
   const [newSessionName, setNewSessionName] = useState('');
   const [newSessionCapital, setNewSessionCapital] = useState('');
   const [showSummaryModal, setShowSummaryModal] = useState(false);
+  const [sessionsExpanded, setSessionsExpanded] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -191,6 +250,19 @@ const TradingDashboard: React.FC = () => {
     }
   };
 
+  const handleSessionSwitch = (sessionName: string) => {
+    const targetSession = sessions.find(session => 
+      session.name.toLowerCase().includes(sessionName.toLowerCase())
+    );
+    
+    if (targetSession) {
+      setCurrentSession(targetSession);
+      toast.success(`Switched to "${targetSession.name}" session`);
+    } else {
+      toast.error(`Session "${sessionName}" not found`);
+    }
+  };
+
   const handleExportJSON = () => {
     if (!currentSession) return;
     exportToJSON(currentSession, trades, stats);
@@ -249,6 +321,10 @@ const TradingDashboard: React.FC = () => {
     }
   };
 
+  // Get sessions to display based on expanded state
+  const displayedSessions = sessionsExpanded ? sessions : sessions.slice(0, 1);
+  const shouldShowExpandButton = sessions.length > 1;
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
@@ -288,6 +364,9 @@ const TradingDashboard: React.FC = () => {
       </header>
 
       <div className="max-w-7xl mx-auto px-6 py-8">
+        {/* Smart Greeting */}
+        <SmartGreeting userName={user?.email} />
+
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Sidebar */}
           <div className="lg:col-span-1 space-y-6">
@@ -346,8 +425,8 @@ const TradingDashboard: React.FC = () => {
                 </motion.form>
               )}
 
-              <div className="space-y-3">
-                {sessions.map((session) => {
+              <div className={`space-y-3 ${sessions.length > 3 && sessionsExpanded ? 'max-h-96 overflow-y-auto' : ''}`}>
+                {displayedSessions.map((session) => {
                   const sessionStats = calculateSessionStats(
                     currentSession?.id === session.id ? trades : [], 
                     session.initial_capital
@@ -365,15 +444,36 @@ const TradingDashboard: React.FC = () => {
                   );
                 })}
               </div>
+
+              {shouldShowExpandButton && (
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setSessionsExpanded(!sessionsExpanded)}
+                  className="w-full mt-3 flex items-center justify-center px-3 py-2 bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600 transition-colors"
+                >
+                  {sessionsExpanded ? (
+                    <>
+                      <ChevronUp className="w-4 h-4 mr-2" />
+                      Show Less
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown className="w-4 h-4 mr-2" />
+                      Show All ({sessions.length})
+                    </>
+                  )}
+                </motion.button>
+              )}
             </div>
 
             {/* AI Summary */}
             {currentSession && (
               <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-                <h3 className="text-lg font-semibold text-white mb-4">AI Insights</h3>
+                <h3 className="text-lg font-semibold text-white mb-4">Sydney's Insights</h3>
                 <button
                   onClick={() => setShowSummaryModal(true)}
-                  className="w-full flex items-center justify-center px-4 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all"
+                  className="w-full flex items-center justify-center px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all"
                 >
                   <Sparkles className="w-4 h-4 mr-2" />
                   Generate Session Summary
@@ -491,7 +591,10 @@ const TradingDashboard: React.FC = () => {
       </div>
 
       {/* AI Chat Interface */}
-      <ChatInterface currentSessionId={currentSession?.id} />
+      <ChatInterface 
+        currentSessionId={currentSession?.id} 
+        onSessionSwitch={handleSessionSwitch}
+      />
 
       {/* Session Summary Modal */}
       {currentSession && (

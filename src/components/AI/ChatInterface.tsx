@@ -4,7 +4,6 @@ import {
   MessageCircle, 
   Send, 
   X, 
-  Bot, 
   User, 
   Loader2,
   Minimize2,
@@ -16,9 +15,17 @@ import toast from 'react-hot-toast';
 
 interface ChatInterfaceProps {
   currentSessionId?: string;
+  onSessionSwitch?: (sessionName: string) => void;
 }
 
-const ChatInterface: React.FC<ChatInterfaceProps> = ({ currentSessionId }) => {
+// Female avatar component
+const SydneyAvatar: React.FC<{ className?: string }> = ({ className = "w-4 h-4" }) => (
+  <div className={`${className} bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-bold text-xs`}>
+    S
+  </div>
+);
+
+const ChatInterface: React.FC<ChatInterfaceProps> = ({ currentSessionId, onSessionSwitch }) => {
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
@@ -53,12 +60,30 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ currentSessionId }) => {
     };
 
     setMessages(prev => [...prev, userMessage]);
+    const currentInput = inputMessage.trim();
     setInputMessage('');
     setIsLoading(true);
 
     try {
+      // Check if user wants to switch sessions
+      const sessionSwitchMatch = currentInput.match(/(?:load|switch to|open)\s+(?:the\s+)?(.+?)(?:\s+session)?$/i);
+      if (sessionSwitchMatch && onSessionSwitch) {
+        const sessionName = sessionSwitchMatch[1].trim();
+        onSessionSwitch(sessionName);
+        
+        const assistantMessage: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: `I'll switch you to the "${sessionName}" session. Let me find that for you!`,
+          timestamp: new Date(),
+        };
+        setMessages(prev => [...prev, assistantMessage]);
+        setIsLoading(false);
+        return;
+      }
+
       const aiResponse = await aiService.sendChatMessage(
-        userMessage.content,
+        currentInput,
         user.id,
         currentSessionId
       );
@@ -72,7 +97,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ currentSessionId }) => {
 
       setMessages(prev => [...prev, assistantMessage]);
     } catch (error) {
-      toast.error('Failed to get AI response');
+      toast.error('Failed to get Sydney\'s response');
       console.error('Chat error:', error);
     } finally {
       setIsLoading(false);
@@ -98,7 +123,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ currentSessionId }) => {
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700 transition-colors z-50"
+        className="fixed bottom-6 right-6 bg-gradient-to-br from-purple-600 to-pink-600 text-white p-4 rounded-full shadow-lg hover:from-purple-700 hover:to-pink-700 transition-all z-50"
       >
         <MessageCircle className="w-6 h-6" />
       </motion.button>
@@ -120,12 +145,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ currentSessionId }) => {
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-slate-700">
         <div className="flex items-center">
-          <div className="bg-blue-600 rounded-full p-2 mr-3">
-            <Bot className="w-4 h-4 text-white" />
+          <div className="bg-gradient-to-br from-purple-600 to-pink-600 rounded-full p-2 mr-3">
+            <SydneyAvatar className="w-4 h-4" />
           </div>
           <div>
-            <h3 className="text-white font-medium">AI Trading Assistant</h3>
-            <p className="text-slate-400 text-xs">Ask me about your trades</p>
+            <h3 className="text-white font-medium">Sydney</h3>
+            <p className="text-slate-400 text-xs">Your AI Trading Assistant</p>
           </div>
         </div>
         <div className="flex items-center space-x-2">
@@ -156,15 +181,16 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ currentSessionId }) => {
             <div className="flex-1 p-4 overflow-y-auto max-h-80 space-y-4">
               {messages.length === 0 && (
                 <div className="text-center text-slate-400 py-8">
-                  <Bot className="w-12 h-12 mx-auto mb-3 text-slate-600" />
-                  <p className="text-sm">Hi! I'm your AI trading assistant.</p>
+                  <SydneyAvatar className="w-12 h-12 mx-auto mb-3" />
+                  <p className="text-sm">Hi! I'm Sydney, your AI trading assistant.</p>
                   <p className="text-xs mt-1">Ask me anything about your trades!</p>
                   <div className="mt-4 space-y-2 text-xs">
                     <p className="text-slate-500">Try asking:</p>
                     <div className="space-y-1">
                       <p>"Summarize my trades this week"</p>
-                      <p>"What was my best performing trade?"</p>
+                      <p>"Load the BTC 5 Minute session"</p>
                       <p>"Give me feedback on my trading"</p>
+                      <p>"Tell me a joke"</p>
                     </div>
                   </div>
                 </div>
@@ -183,12 +209,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ currentSessionId }) => {
                     <div className={`p-2 rounded-full ${
                       message.role === 'user' 
                         ? 'bg-blue-600' 
-                        : 'bg-slate-700'
+                        : 'bg-gradient-to-br from-purple-600 to-pink-600'
                     }`}>
                       {message.role === 'user' ? (
                         <User className="w-3 h-3 text-white" />
                       ) : (
-                        <Bot className="w-3 h-3 text-white" />
+                        <SydneyAvatar className="w-3 h-3" />
                       )}
                     </div>
                     <div className={`p-3 rounded-lg ${
@@ -212,13 +238,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ currentSessionId }) => {
                   className="flex justify-start"
                 >
                   <div className="flex items-start space-x-2">
-                    <div className="p-2 rounded-full bg-slate-700">
-                      <Bot className="w-3 h-3 text-white" />
+                    <div className="p-2 rounded-full bg-gradient-to-br from-purple-600 to-pink-600">
+                      <SydneyAvatar className="w-3 h-3" />
                     </div>
                     <div className="p-3 rounded-lg bg-slate-700 text-slate-100">
                       <div className="flex items-center space-x-2">
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        <span className="text-sm">Thinking...</span>
+                        <span className="text-sm">Sydney is thinking...</span>
                       </div>
                     </div>
                   </div>
@@ -237,14 +263,14 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ currentSessionId }) => {
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  placeholder="Ask about your trades..."
-                  className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  placeholder="Ask Sydney about your trades..."
+                  className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
                   disabled={isLoading}
                 />
                 <button
                   onClick={handleSendMessage}
                   disabled={!inputMessage.trim() || isLoading}
-                  className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="p-2 bg-gradient-to-br from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Send className="w-4 h-4" />
                 </button>

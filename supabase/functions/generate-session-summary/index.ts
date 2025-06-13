@@ -33,6 +33,7 @@ Deno.serve(async (req) => {
       .single();
 
     if (sessionError || !session) {
+      console.error('Session error:', sessionError);
       throw new Error('Session not found');
     }
 
@@ -44,6 +45,7 @@ Deno.serve(async (req) => {
       .order('created_at', { ascending: false });
 
     if (tradesError) {
+      console.error('Trades error:', tradesError);
       throw new Error('Failed to fetch trades');
     }
 
@@ -56,7 +58,7 @@ Deno.serve(async (req) => {
     const totalMargin = trades?.reduce((sum, trade) => sum + trade.margin, 0) || 0;
     const avgROI = totalTrades ? trades.reduce((sum, trade) => sum + trade.roi, 0) / totalTrades : 0;
 
-    const systemPrompt = `You are an AI trading analyst. Generate a comprehensive summary for this trading session.
+    const systemPrompt = `You are Sydney, an AI trading analyst. Generate a comprehensive and personalized summary for this trading session.
 
 Session Details:
 - Name: ${session.name}
@@ -76,19 +78,25 @@ Trading Performance:
 Individual Trades:
 ${JSON.stringify(trades, null, 2)}
 
-Please provide:
-1. A concise performance summary
-2. Key insights and patterns
-3. Areas for improvement
-4. Psychological observations about trading behavior
-5. Specific recommendations for future sessions
+Please provide a warm, personalized summary that includes:
 
-Keep the summary professional, actionable, and under 500 words.`;
+1. **Performance Overview**: A friendly summary of how the session went
+2. **Key Insights**: Notable patterns, strengths, and areas for improvement
+3. **Psychological Analysis**: Observations about trading behavior and mindset based on trade patterns and comments
+4. **Risk Assessment**: Any concerning patterns like overtrading or revenge trading
+5. **Personalized Recommendations**: Specific, actionable advice for future sessions
+
+Write in a conversational, supportive tone as Sydney. Keep it under 500 words but make it comprehensive and valuable.`;
+
+    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+    if (!openAIApiKey) {
+      throw new Error('OpenAI API key not configured');
+    }
 
     const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
+        'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -102,7 +110,9 @@ Keep the summary professional, actionable, and under 500 words.`;
     });
 
     if (!openAIResponse.ok) {
-      throw new Error('OpenAI API request failed');
+      const errorText = await openAIResponse.text();
+      console.error('OpenAI API error:', errorText);
+      throw new Error(`OpenAI API request failed: ${openAIResponse.status}`);
     }
 
     const aiData = await openAIResponse.json();

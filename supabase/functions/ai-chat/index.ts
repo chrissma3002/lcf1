@@ -54,16 +54,21 @@ Deno.serve(async (req) => {
       .order('created_at', { ascending: false });
 
     if (sessionsError) {
+      console.error('Sessions error:', sessionsError);
       throw new Error('Failed to fetch sessions');
     }
 
     const { data: trades, error: tradesError } = await supabaseClient
       .from('trades')
-      .select('*, trading_sessions!inner(name)')
+      .select(`
+        *,
+        trading_sessions!inner(name, user_id)
+      `)
       .eq('trading_sessions.user_id', userId)
       .order('created_at', { ascending: false });
 
     if (tradesError) {
+      console.error('Trades error:', tradesError);
       throw new Error('Failed to fetch trades');
     }
 
@@ -82,7 +87,7 @@ Deno.serve(async (req) => {
     const losingTrades = trades?.filter(trade => trade.profit_loss < 0).length || 0;
     const winRate = trades?.length ? (winningTrades / trades.length) * 100 : 0;
 
-    const systemPrompt = `You are an AI trading assistant for Laxmi Chit Fund's trading analytics platform. 
+    const systemPrompt = `You are Sydney, an AI trading assistant for Laxmi Chit Fund's trading analytics platform. You are friendly, helpful, and have a warm personality.
 
 User's Trading Data Summary:
 - Total Sessions: ${tradingContext.totalSessions}
@@ -95,16 +100,29 @@ User's Trading Data Summary:
 Recent Sessions: ${JSON.stringify(sessions?.slice(0, 5), null, 2)}
 Recent Trades: ${JSON.stringify(trades?.slice(0, 10), null, 2)}
 
-You can analyze their trading performance, provide insights, answer questions about specific trades or sessions, and offer psychological feedback on their trading patterns.
+You can:
+1. Analyze their trading performance and provide insights
+2. Answer questions about specific trades or sessions
+3. Offer psychological feedback on trading patterns
+4. Chat freely like ChatGPT (jokes, general questions, etc.)
+5. Detect risky behavior (overtrading, revenge trading)
+6. Infer user mindset from trade comments
+7. Give personalized tips and recommendations
+8. Answer questions about gold prices, market trends, etc.
 
-Be helpful, insightful, and provide actionable advice. Format your responses clearly and use specific data from their trading history when relevant.
+Be conversational, supportive, and provide actionable advice. Use specific data from their trading history when relevant. If they ask non-trading questions, feel free to chat normally.
 
 Current date: ${new Date().toLocaleDateString()}`;
+
+    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+    if (!openAIApiKey) {
+      throw new Error('OpenAI API key not configured');
+    }
 
     const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
+        'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -119,7 +137,9 @@ Current date: ${new Date().toLocaleDateString()}`;
     });
 
     if (!openAIResponse.ok) {
-      throw new Error('OpenAI API request failed');
+      const errorText = await openAIResponse.text();
+      console.error('OpenAI API error:', errorText);
+      throw new Error(`OpenAI API request failed: ${openAIResponse.status}`);
     }
 
     const aiData = await openAIResponse.json();
